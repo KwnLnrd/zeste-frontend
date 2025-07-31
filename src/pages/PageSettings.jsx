@@ -30,14 +30,12 @@ export default function DashboardLayout() {
     const [isOrgReady, setIsOrgReady] = useState(false);
 
     useEffect(() => {
-        // Ne rien faire tant que tout n'est pas chargé ou que la liste n'est pas prête
-        if (!isUserLoaded || !isOrgListLoaded || !organizationList) {
+        // Ne rien faire tant que tout n'est pas chargé
+        if (!isUserLoaded || !isOrgListLoaded) {
             return;
         }
 
-        const hasActiveOrganization = user.organizationMemberships.some(
-             (mem) => mem.organization.id === user.activeOrganizationId
-        );
+        const hasActiveOrganization = !!user.organizationMemberships.find(mem => mem.organization.id === user.activeOrganizationId);
 
         // Si l'utilisateur a des organisations mais aucune n'est active
         if (organizationList.length > 0 && !hasActiveOrganization) {
@@ -45,19 +43,20 @@ export default function DashboardLayout() {
             setActive({ organization: firstOrgId }).then(() => {
                 setIsOrgReady(true);
             });
+        } else if (organizationList.length > 0) {
+            setIsOrgReady(true);
         } else {
-            // Si une organisation est déjà active ou s'il n'y en a pas, on est prêt
+            // Gère le cas où l'utilisateur n'a pas d'organisation
             setIsOrgReady(true);
         }
 
     }, [isUserLoaded, isOrgListLoaded, setActive, user, organizationList]);
 
-    // Afficher un message de chargement tant que les données de Clerk ne sont pas prêtes
-    if (!isUserLoaded || !isOrgListLoaded || !isOrgReady) {
+    if (!isUserLoaded || !isOrgListLoaded || (organizationList.length > 0 && !isOrgReady)) {
         return <LoadingComponent message="Chargement de votre espace..." />;
     }
     
-    // Si l'utilisateur n'a aucune organisation, on lui montre un message clair
+    // Si l'utilisateur n'a aucune organisation, on lui montre un message
     if (organizationList.length === 0) {
         return <div className="p-8 text-center">Vous n'êtes membre d'aucune organisation. Veuillez en créer une ou demander une invitation.</div>;
     }
