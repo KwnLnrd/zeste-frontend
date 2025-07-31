@@ -1,12 +1,12 @@
-import { useUser, UserButton, useAuth, useOrganizationList } from '@clerk/clerk-react';
+import { useUser, UserButton, useOrganizationList } from '@clerk/clerk-react';
 import { BarChart, Users, Settings, Utensils } from 'lucide-react';
 import { NavLink, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import PageSettings from '../pages/PageSettings'; // Assurez-vous d'importer PageSettings
+import { useEffect } from 'react';
+import PageSettings from '../pages/PageSettings'; // Assurez-vous que ce chemin est correct
 
 // --- Composant de chargement ---
 const LoadingComponent = ({ message }) => (
-    <div className="p-8 text-center">{message || "Chargement..."}</div>
+    <div className="p-8 text-center text-gray-600">{message || "Chargement..."}</div>
 );
 
 // --- Composant principal du Layout ---
@@ -27,43 +27,49 @@ const SidebarLink = ({ to, icon, children }) => (
 export default function DashboardLayout() {
     const { user, isLoaded: isUserLoaded } = useUser();
     const { setActive, isLoaded: isOrgListLoaded, organizationList } = useOrganizationList();
-    const [isOrgReady, setIsOrgReady] = useState(false);
 
     useEffect(() => {
-        // Ne rien faire tant que tout n'est pas chargé ou que la liste n'est pas prête
-        if (!isUserLoaded || !isOrgListLoaded || !organizationList) {
+        // Ne rien faire tant que les données ne sont pas prêtes ou que la liste n'est pas définie
+        if (!isUserLoaded || !isOrgListLoaded || !organizationList || !setActive) {
             return;
         }
 
-        const hasActiveOrganization = user.organizationMemberships.some(
-             (mem) => mem.organization.id === user.activeOrganizationId
-        );
-
-        // Si l'utilisateur a des organisations mais aucune n'est active
-        if (organizationList.length > 0 && !hasActiveOrganization) {
-            const firstOrgId = organizationList[0].organization.id;
-            setActive({ organization: firstOrgId }).then(() => {
-                setIsOrgReady(true);
-            });
-        } else {
-            // Si une organisation est déjà active ou s'il n'y en a pas, on est prêt
-            setIsOrgReady(true);
+        // Si l'utilisateur a des organisations mais aucune n'est active, activer la première
+        if (organizationList.length > 0 && !user.activeOrganizationId) {
+            setActive({ organization: organizationList[0].organization.id });
         }
+    }, [isUserLoaded, isOrgListLoaded, organizationList, setActive, user]);
 
-    }, [isUserLoaded, isOrgListLoaded, setActive, user, organizationList]);
+    // --- BLOC DE RENDU SÉCURISÉ ---
 
-    // Afficher un message de chargement tant que les données de Clerk ne sont pas prêtes
-    if (!isUserLoaded || !isOrgListLoaded || !isOrgReady) {
-        return <LoadingComponent message="Chargement de votre espace..." />;
+    // 1. Attendre que les deux hooks de Clerk soient chargés
+    if (!isUserLoaded || !isOrgListLoaded) {
+        return <LoadingComponent message="Chargement de votre session..." />;
     }
     
-    // Si l'utilisateur n'a aucune organisation, on lui montre un message clair
-    if (organizationList.length === 0) {
-        return <div className="p-8 text-center">Vous n'êtes membre d'aucune organisation. Veuillez en créer une ou demander une invitation.</div>;
+    // 2. Vérifier que la liste des organisations existe bien (anti-crash)
+    if (!organizationList) {
+        return <LoadingComponent message="Vérification des organisations..." />;
     }
 
-    const isAdmin = user?.organizationMemberships?.some(
-        (mem) => mem.role === 'org:admin'
+    // 3. Si l'utilisateur n'a aucune organisation, lui dire quoi faire
+    if (organizationList.length === 0) {
+        return (
+            <div className="p-8 text-center">
+                <h1 className="text-2xl font-bold">Bienvenue !</h1>
+                <p className="mt-2 text-gray-600">Vous n'êtes membre d'aucune organisation. Veuillez en créer une sur votre dashboard Clerk ou demander une invitation.</p>
+            </div>
+        );
+    }
+
+    // 4. Attendre qu'une organisation soit active (le useEffect s'en charge)
+    if (!user.activeOrganizationId) {
+        return <LoadingComponent message="Activation de votre organisation..." />;
+    }
+
+    // Si on arrive ici, tout est prêt. On peut afficher le dashboard.
+    const isAdmin = user.organizationMemberships.some(
+        (mem) => mem.organization.id === user.activeOrganizationId && mem.role === 'org:admin'
     );
 
     return (
