@@ -6,6 +6,8 @@ import { ClerkProvider } from '@clerk/clerk-react'
 import { frFR } from "@clerk/localizations";
 import { BrowserRouter } from 'react-router-dom';
 
+console.log("VITE_API_BASE_URL DANS MON CODE:", import.meta.env.VITE_API_BASE_URL);
+
 // La clé publique de votre application Clerk
 // Pour la production, il est recommandé de la stocker dans des variables d'environnement
 const PUBLISHABLE_KEY = "pk_test_Z29sZGVuLW95c3Rlci00My5jbGVyay5hY2NvdW50cy5kZXYk"
